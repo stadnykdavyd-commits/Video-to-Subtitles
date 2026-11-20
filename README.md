@@ -15,6 +15,8 @@ video ──► extract audio ──► clean up ──► transcribe (Whisper) 
 
 Everything except the transcription step is pure Python standard library + FFmpeg. Whisper is an optional install.
 
+![A real run: voice recording to SRT with large-v3](docs/cover.png)
+
 ## Install
 
 1. Python 3.9+ and FFmpeg (Windows: `winget install Gyan.FFmpeg`)

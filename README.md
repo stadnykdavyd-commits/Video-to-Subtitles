@@ -53,7 +53,7 @@ Word error rate (lower is better) on synthetic speech with known text, mixed wit
 | small | 1.5% | 8.5% |
 | large-v3 | 3.1% | 6.4% |
 
-Differences of one or two words are noise at this sample size (about 65 words per test). The tests used Windows text-to-speech voices, not human speakers, so treat them as a pipeline check rather than a benchmark. On Ukrainian rap over a beat (the hardest case I tried, judged by ear, no reference lyrics) `large-v3` gave visibly more coherent lines than `small`.
+Differences of one or two words are noise at this sample size (about 65 words per test). The tests used Windows text-to-speech voices, not human speakers, so treat them as a pipeline check rather than a benchmark. On a 31-second recording of a real speaker (English, studio-quality voice, no reference transcript) `large-v3` produced 9 cues that read as clean, grammatical sentences with correct timing (45 s on a CPU-only laptop). On Ukrainian rap over a beat (the hardest case I tried, judged by ear, no reference lyrics) `large-v3` gave visibly more coherent lines than `small`.
 
 ## Tests
 

@@ -9,6 +9,12 @@ from dataclasses import dataclass
 
 END_PUNCT = (".", "!", "?", "…", ",", ";", ":")
 
+# English words that should not be the last word of a cue (articles, prepositions, conjunctions...)
+WEAK_END_WORDS = {
+    "a", "an", "the", "of", "to", "in", "on", "at", "for", "with", "and", "or", "but", "that", "which",
+    "as", "by", "from", "my", "your", "his", "her", "their", "our", "its", "if", "so", "than", "into",
+}
+
 
 @dataclass
 class Segment:
@@ -75,6 +81,16 @@ def split_segment(seg: Segment, max_chars: int = 42, max_lines: int = 2, max_dur
         else:
             chunks.append(cur)
 
+    # never end a cue on a word that needs its successor ("...that has a" | "Blue Yeti microphone")
+    for i in range(len(chunks) - 1):
+        while (
+            len(chunks[i]) > 1
+            and chunks[i][-1].lower().strip(".,;:!?…\"'") in WEAK_END_WORDS
+            and not chunks[i][-1].endswith(END_PUNCT)
+            and len(" ".join([chunks[i][-1]] + chunks[i + 1])) <= limit
+        ):
+            chunks[i + 1].insert(0, chunks[i].pop())
+
     pieces = [" ".join(c) for c in chunks]
     total_chars = sum(len(p) for p in pieces)
     out: list[Segment] = []
@@ -109,6 +125,30 @@ def wrap_lines(text: str, max_chars: int = 42, max_lines: int = 2) -> str:
     return "\n".join(lines)
 
 
+def _fix_dangling_words(segments: list[Segment], max_gap: float = 1.5) -> list[Segment]:
+    """Whisper sometimes ends a segment on 'a' / 'the' / 'with'. Move such trailing words to the start of the
+    next segment (timing shared by character count) so no cue ends in the middle of a phrase."""
+    segs = [Segment(s.start, s.end, " ".join(s.text.split())) for s in segments]
+    for i in range(len(segs) - 1):
+        seg, nxt = segs[i], segs[i + 1]
+        words = seg.text.split()
+        moved: list[str] = []
+        while (
+            len(words) > 1
+            and words[-1].lower().strip(".,;:!?…\"'") in WEAK_END_WORDS
+            and not words[-1].endswith(END_PUNCT)
+        ):
+            moved.insert(0, words.pop())
+        if not moved or nxt.start - seg.end > max_gap or not nxt.text:
+            continue
+        share = len(" ".join(moved)) / max(len(seg.text), 1)
+        boundary = seg.end - (seg.end - seg.start) * share
+        seg.text, seg.end = " ".join(words), boundary
+        nxt.text = " ".join(moved) + " " + nxt.text
+        nxt.start = min(nxt.start, boundary)
+    return segs
+
+
 def refine(
     segments: list[Segment],
     max_chars: int = 42,
@@ -118,7 +158,7 @@ def refine(
 ) -> list[Segment]:
     """Raw recognizer output -> clean cues: no empties, split to fit, wrapped, no overlaps."""
     cues: list[Segment] = []
-    for seg in sorted(segments, key=lambda s: s.start):
+    for seg in _fix_dangling_words(sorted(segments, key=lambda s: s.start)):
         for piece in split_segment(seg, max_chars, max_lines, max_duration):
             cues.append(Segment(piece.start, piece.end, wrap_lines(piece.text, max_chars, max_lines)))
 

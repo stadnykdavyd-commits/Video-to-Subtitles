@@ -56,6 +56,14 @@ class WrapAndSplitTests(unittest.TestCase):
         for a, b in zip(parts, parts[1:]):
             self.assertAlmostEqual(a.end, b.start)
 
+    def test_cue_does_not_end_on_article_or_preposition(self):
+        text = "This is my normal voice. I'm an American-born female that has a Blue Yeti microphone with a pop filter."
+        parts = split_segment(Segment(2.4, 9.2, text))
+        self.assertGreater(len(parts), 1)
+        self.assertEqual(" ".join(p.text for p in parts), text)
+        for p in parts[:-1]:
+            self.assertNotIn(p.text.split()[-1].lower(), {"a", "an", "the", "of", "to", "with", "that"}, p.text)
+
     def test_long_duration_is_split(self):
         parts = split_segment(Segment(0, 20, "word " * 12))
         self.assertGreaterEqual(len(parts), 4)
@@ -69,6 +77,18 @@ class RefineTests(unittest.TestCase):
         cues = refine([Segment(5, 9, "second"), Segment(0, 6, "first")])
         self.assertEqual([c.text for c in cues], ["first", "second"])
         self.assertLessEqual(cues[0].end, cues[1].start)
+
+    def test_segment_ending_on_article_hands_it_to_the_next(self):
+        # real Whisper output: the segment boundary fell between "has a" and "Blue Yeti"
+        cues = refine([
+            Segment(2.4, 6.7, "This is my normal voice. I'm an American-born female that has a"),
+            Segment(6.7, 9.2, "Blue Yeti microphone with a pop filter."),
+        ])
+        self.assertTrue(" ".join(c.text.replace("\n", " ") for c in cues).startswith("This is my normal voice."))
+        self.assertTrue(cues[0].text.replace("\n", " ").endswith("female that has"))
+        self.assertTrue(cues[1].text.startswith("a Blue Yeti"))
+        self.assertLess(cues[0].end, 6.7)           # boundary moved back to where the word was spoken
+        self.assertLessEqual(cues[0].end, cues[1].start + 1e-9)
 
     def test_short_cue_extended_when_there_is_room(self):
         cues = refine([Segment(0, 0.2, "Hi"), Segment(5, 6, "there")])

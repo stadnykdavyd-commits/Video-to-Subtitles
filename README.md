@@ -63,7 +63,7 @@ Differences of one or two words are noise at this sample size (about 65 words pe
 python -m unittest discover -s tests -v
 ```
 
-17 tests: timestamp formatting, splitting/wrapping, overlap handling, SRT/VTT output, and end-to-end runs on a video generated with FFmpeg (a stand-in recognizer is used, so the tests need neither Whisper nor a model download).
+19 tests: timestamp formatting, splitting/wrapping, overlap handling, SRT/VTT output, and end-to-end runs on a video generated with FFmpeg (a stand-in recognizer is used, so the tests need neither Whisper nor a model download).
 
 ## Project layout
 
